@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GranosHub — Inteligencia de Mercado</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --bg2: #161b26;
+    --bg3: #1e2535;
+    --card: #1a2035;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --text2: #8b91a8;
+    --text3: #565e7a;
+    --green: #2ed573;
+    --green-bg: rgba(46,213,115,0.1);
+    --red: #ff4757;
+    --red-bg: rgba(255,71,87,0.1);
+    --amber: #ffa502;
+    --amber-bg: rgba(255,165,2,0.1);
+    --blue: #1e90ff;
+    --blue-bg: rgba(30,144,255,0.08);
+    --purple: #9b59b6;
+    --teal: #1abc9c;
+    --font: 'IBM Plex Sans', system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+    /* Market colors */
+    --chicago: #f39c12;
+    --brasil: #27ae60;
+    --argentina: #2980b9;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  /* Header */
+  .header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo { font-family: var(--mono); font-size: 16px; font-weight: 500; letter-spacing: -0.5px; }
+  .logo span { color: var(--green); }
+  .header-meta { display: flex; align-items: center; gap: 16px; }
+  .last-update {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+  }
+  .btn-update {
+    background: var(--green-bg);
+    color: var(--green);
+    border: 1px solid rgba(46,213,115,0.25);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .btn-update:hover { background: rgba(46,213,115,0.18); border-color: rgba(46,213,115,0.4); }
+  .btn-update.loading { opacity: 0.6; cursor: wait; }
+  .spinner {
+    width: 12px; height: 12px;
+    border: 1.5px solid var(--green);
+    border-top-color: transparent;
+    border-radius: 50%;
+    display: none;
+    animation: spin 0.7s linear infinite;
+  }
+  .btn-update.loading .spinner { display: block; }
+  .btn-update.loading .btn-icon { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Nav tabs */
+  .nav {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+  }
+  .nav-tab {
+    padding: 12px 18px;
+    font-size: 13px;
+    color: var(--text2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.15s;
+    font-weight: 400;
+  }
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: var(--text); border-bottom-color: var(--green); font-weight: 500; }
+
+  /* Main layout */
+  .main { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+
+  /* Section headers */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    margin-top: 28px;
+  }
+  .section-header:first-child { margin-top: 0; }
+  .section-title {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+  }
+
+  /* Market badge pills */
+  .market-badges { display: flex; gap: 6px; align-items: center; }
+  .badge {
+    font-size: 10px;
+    font-family: var(--mono);
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+  }
+  .badge-chicago { background: rgba(243,156,18,0.15); color: var(--chicago); }
+  .badge-brasil { background: rgba(39,174,96,0.15); color: var(--brasil); }
+  .badge-arg { background: rgba(41,128,185,0.15); color: var(--argentina); }
+
+  /* Price table */
+  .price-table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .price-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .price-table thead tr {
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+  }
+  .price-table th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 500;
+  }
+  .price-table th:not(:first-child) { text-align: right; }
+  .price-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .price-table td:not(:first-child) { text-align: right; font-family: var(--mono); }
+  .price-table tr:last-child td { border-bottom: none; }
+  .price-table tbody tr { transition: background 0.1s; cursor: pointer; }
+  .price-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+
+  .commodity-name { font-weight: 500; font-size: 13px; }
+  .commodity-sub { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 1px; }
+
+  .price-val { font-size: 14px; font-weight: 500; }
+  .price-empty { color: var(--text3); font-size: 12px; }
+  .price-change { font-size: 11px; margin-top: 2px; font-family: var(--mono); }
+  .up { color: var(--green); }
+  .down { color: var(--red); }
+  .neutral { color: var(--text3); }
+
+  .basis-val {
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--mono);
+  }
+  .basis-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-left: 4px;
+    font-family: var(--mono);
+    vertical-align: middle;
+  }
+  .basis-neg { background: var(--red-bg); color: var(--red); }
+  .basis-pos { background: var(--green-bg); color: var(--green); }
+
+  /* Commodity category row */
+  .cat-row td {
+    background: var(--bg3);
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 7px 14px !important;
+    font-weight: 500;
+  }
+
+  /* Market header columns */
+  .col-chicago { color: var(--chicago) !important; }
+  .col-brasil  { color: var(--brasil) !important; }
+  .col-arg     { color: var(--argentina) !important; }
+
+  /* Analytics grid */
+  .analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .chart-title {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text2);
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .chart-subtitle { font-size: 11px; color: var(--text3); margin-bottom: 14px; }
+  .chart-wrap { position: relative; height: 200px; }
+  .chart-wrap-tall { position: relative; height: 260px; }
+
+  /* Basis analytics */
+  .basis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .basis-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .basis-card-title { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.8px; }
+  .basis-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .basis-row:last-child { border-bottom: none; }
+  .basis-row-name { font-size: 12px; color: var(--text2); }
+  .basis-row-val { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+
+  /* Ratio card */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .kpi-label { font-size: 10px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .kpi-value { font-size: 22px; font-weight: 600; font-family: var(--mono); }
+  .kpi-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .kpi-trend { font-size: 11px; margin-top: 4px; font-family: var(--mono); }
+
+  /* Tabs for views */
+  .view-tabs { display: none; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* Tooltip modal for price entry */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: none; align-items: center; justify-content: center;
+    z-index: 200;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 24px;
+    width: 480px;
+    max-width: 95vw;
+  }
+  .modal-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .modal-sub { font-size: 12px; color: var(--text3); margin-bottom: 20px; }
+  .modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .modal-field label { font-size: 11px; color: var(--text3); font-family: var(--mono); display: block; margin-bottom: 4px; }
+  .modal-field input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .modal-field input:focus { outline: none; border-color: var(--green); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+  .btn-primary {
+    background: var(--green-bg);
+    color: var(--green);
+    border: 1px solid rgba(46,213,115,0.25);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+
+  /* AI Status bar */
+  .ai-status {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text2);
+    font-family: var(--mono);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    line-height: 1.6;
+  }
+  .ai-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); margin-top: 4px; flex-shrink: 0; }
+  .ai-dot.active { background: var(--green); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* Campaign selector */
+  .campaign-select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .main { padding: 12px; }
+    .header { padding: 0 12px; }
+    .price-table th:nth-child(n+5), .price-table td:nth-child(n+5) { display: none; }
+  }
+
+  .pos-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-family: var(--mono);
+    font-weight: 500;
+    color: var(--text3);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+    margin-top: 3px;
+    letter-spacing: 0.3px;
+  }
+
+  /* Loading pulse on cells */
+  .loading-cell { animation: cellpulse 1s ease-in-out infinite; }
+  @keyframes cellpulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ---- Commodity expandable cards ---- */
+  .comm-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .comm-card:hover { border-color: var(--border2); }
+
+  .comm-card-header {
+    display: grid;
+    grid-template-columns: 180px 1fr 1fr 1fr 100px 100px;
+    align-items: center;
+    padding: 10px 14px;
+    cursor: pointer;
+    gap: 8px;
+    user-select: none;
+  }
+  @media (max-width: 900px) {
+    .comm-card-header { grid-template-columns: 140px 1fr 1fr 1fr; }
+    .comm-card-header .basis-cols { display: none; }
+  }
+  @media (max-width: 600px) {
+    .comm-card-header { grid-template-columns: 120px 1fr 1fr; }
+    .comm-card-header .col-brasil-cell { display: none; }
+  }
+
+  .comm-name { font-weight: 500; font-size: 13px; }
+  .comm-sub  { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
+
+  .comm-price-cell { text-align: right; }
+  .comm-price-main { font-size: 14px; font-weight: 500; font-family: var(--mono); }
+  .comm-price-pos  {
+    display: inline-block;
+    font-size: 10px; font-family: var(--mono); font-weight: 500;
+    color: var(--text3); background: var(--bg3);
+    border: 1px solid var(--border); border-radius: 3px;
+    padding: 1px 5px; margin-top: 2px; letter-spacing: 0.3px;
+  }
+  .comm-price-var  { font-size: 11px; font-family: var(--mono); margin-top: 1px; }
+  .comm-price-empty { color: var(--text3); font-size: 12px; font-family: var(--mono); }
+
+  .comm-basis-cell { text-align: right; }
+  .comm-basis-val  { font-size: 12px; font-family: var(--mono); font-weight: 500; }
+
+  .comm-expand-btn {
+    font-size: 11px; color: var(--text3); font-family: var(--mono);
+    text-align: right; transition: color 0.15s;
+    display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+  }
+  .comm-card.expanded .comm-expand-btn { color: var(--green); }
+  .expand-arrow { transition: transform 0.2s; display: inline-block; }
+  .comm-card.expanded .expand-arrow { transform: rotate(180deg); }
+
+  /* Expanded positions table */
+  .comm-positions {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 0;
+  }
+  .comm-card.expanded .comm-positions { display: block; }
+
+  .pos-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 12px;
+  }
+  .pos-table th {
+    background: var(--bg3);
+    padding: 7px 14px;
+    font-size: 10px; font-family: var(--mono); color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.8px;
+    text-align: right; font-weight: 500;
+  }
+  .pos-table th:first-child { text-align: left; width: 180px; }
+  .pos-table td {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    text-align: right; font-family: var(--mono);
+    vertical-align: middle;
+  }
+  .pos-table td:first-child { text-align: left; }
+  .pos-table tr:last-child td { border-bottom: none; }
+  .pos-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  .pos-market-label {
+    font-size: 10px; font-weight: 500; text-transform: uppercase;
+    letter-spacing: 0.5px; font-family: var(--mono);
+  }
+  .pos-tag {
+    display: inline-block; font-size: 10px; font-family: var(--mono);
+    padding: 2px 6px; border-radius: 3px; font-weight: 500;
+    background: var(--bg3); color: var(--text2);
+    border: 1px solid var(--border);
+  }
+  .pos-tag-disp { background: rgba(46,213,115,0.08); color: var(--green); border-color: rgba(46,213,115,0.2); }
+
+  /* Column header labels */
+  .col-header-row {
+    display: grid;
+    grid-template-columns: 180px 1fr 1fr 1fr 100px 100px;
+    padding: 7px 14px; gap: 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg3);
+  }
+  .col-header-label {
+    font-size: 10px; font-family: var(--mono); color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.8px;
+    font-weight: 500; text-align: right;
+  }
+  .col-header-label:first-child { text-align: left; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">Granos<span>Hub</span></div>
+  <div class="header-meta">
+    <div class="last-update" id="last-update-text">Sin actualizar</div>
+    <button class="btn-update" id="btn-update" onclick="actualizarConIA()">
+      <span class="btn-icon">⟳</span>
+      <div class="spinner"></div>
+      Actualizar con IA
+    </button>
+  </div>
+</div>
+
+<!-- Nav -->
+<div class="nav">
+  <div class="nav-tab active" onclick="showView('precios')">Precios</div>
+  <div class="nav-tab" onclick="showView('basis')">Basis</div>
+  <div class="nav-tab" onclick="showView('ratios')">Ratios & Campañas</div>
+  <div class="nav-tab" onclick="showView('manual')">Carga Manual</div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- AI Status bar -->
+  <div class="ai-status" id="ai-status">
+    <div class="ai-dot" id="ai-dot"></div>
+    <div id="ai-status-text">Presioná "Actualizar con IA" para obtener precios reales del mercado de hoy. Los valores mostrados son datos de ejemplo para ilustrar la plataforma.</div>
+  </div>
+
+  <!-- VIEW: PRECIOS -->
+  <div class="view active" id="view-precios">
+
+    <div class="section-header">
+      <span class="section-title">Granos</span>
+      <div class="market-badges">
+        <span class="badge badge-chicago">Chicago</span>
+        <span class="badge badge-brasil">Brasil (ESALQ)</span>
+        <span class="badge badge-arg">Argentina (Rosario/MATBA)</span>
+      </div>
+    </div>
+
+    <div id="cards-granos"></div>
+
+    <div class="section-header" style="margin-top:24px;">
+      <span class="section-title">Subproductos — Aceites & Harinas</span>
+    </div>
+
+    <div id="cards-subproductos"></div>
+
+  </div>
+
+  <!-- VIEW: BASIS -->
+  <div class="view" id="view-basis">
+    <div class="section-header">
+      <span class="section-title">Análisis de Basis — USD/tn</span>
+    </div>
+
+    <div class="basis-grid" id="basis-cards"></div>
+
+    <div class="analytics-grid">
+      <div class="chart-card">
+        <div class="chart-title">Basis ARG vs Chicago — Soja</div>
+        <div class="chart-subtitle">Evolución diaria (últimos 30 días, datos ilustrativos)</div>
+        <div class="chart-wrap"><canvas id="chart-basis-soja"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Basis ARG vs Chicago — Maíz</div>
+        <div class="chart-subtitle">Evolución diaria (últimos 30 días, datos ilustrativos)</div>
+        <div class="chart-wrap"><canvas id="chart-basis-maiz"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Basis ARG vs Chicago — Trigo</div>
+        <div class="chart-subtitle">Evolución diaria (últimos 30 días, datos ilustrativos)</div>
+        <div class="chart-wrap"><canvas id="chart-basis-trigo"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Basis comparado por cultivo — Hoy</div>
+        <div class="chart-subtitle">ARG vs Chicago (USD/tn)</div>
+        <div class="chart-wrap"><canvas id="chart-basis-comparado"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW: RATIOS & CAMPAÑAS -->
+  <div class="view" id="view-ratios">
+
+    <div class="section-header">
+      <span class="section-title">KPIs de mercado — Hoy</span>
+    </div>
+
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <div class="section-header">
+      <span class="section-title">Ratio Soja/Maíz por campaña</span>
+      <span style="font-size:11px;color:var(--text3);font-family:var(--mono);">Mayor ratio = soja más cara relativa al maíz</span>
+    </div>
+
+    <div class="analytics-grid">
+      <div class="chart-card" style="grid-column: span 2;">
+        <div class="chart-title">Ratio Soja / Maíz — Chicago</div>
+        <div class="chart-subtitle">Comparativa entre campañas 21/22 a 25/26 (tn soja / tn maíz)</div>
+        <div class="chart-wrap-tall"><canvas id="chart-ratio-campanas"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Ratio Soja / Maíz — por mercado</div>
+        <div class="chart-subtitle">Campaña actual vs promedio histórico 5 años</div>
+        <div class="chart-wrap"><canvas id="chart-ratio-mercados"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <span class="section-title">Precios históricos — Chicago por campaña</span>
+    </div>
+    <div class="analytics-grid">
+      <div class="chart-card" style="grid-column: span 2;">
+        <div class="chart-title">Soja Chicago — Precio mensual por campaña</div>
+        <div class="chart-subtitle">Fuente: FRED/FMI · USD/tn promedio mensual</div>
+        <div class="chart-wrap-tall"><canvas id="chart-hist-soja"></canvas></div>
+      </div>
+      <div class="chart-card" style="grid-column: span 2;">
+        <div class="chart-title">Maíz Chicago — Precio mensual por campaña</div>
+        <div class="chart-subtitle">Fuente: FRED/FMI · USD/tn promedio mensual</div>
+        <div class="chart-wrap-tall"><canvas id="chart-hist-maiz"></canvas></div>
+      </div>
+      <div class="chart-card" style="grid-column: span 2;">
+        <div class="chart-title">Trigo Chicago — Precio mensual por campaña</div>
+        <div class="chart-subtitle">Fuente: FRED/FMI · USD/tn promedio mensual</div>
+        <div class="chart-wrap-tall"><canvas id="chart-hist-trigo"></canvas></div>
+      </div>
+    </div>
+
+    <div id="fred-status" style="font-size:11px;font-family:var(--mono);color:var(--text3);margin-top:8px;padding:0 2px;"></div>
+
+  </div>
+
+  <!-- VIEW: CARGA MANUAL -->
+  <div class="view" id="view-manual">
+    <div class="section-header">
+      <span class="section-title">Carga manual de precios</span>
+    </div>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:24px;max-width:700px;">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.7;">
+        Ingresá los precios desde las fuentes que usás habitualmente (MATBA-ROFEX, Cámara Rosario, CME Group, ESALQ). Todos los precios en <strong>USD/tn</strong>.
+      </p>
+
+      <div id="manual-form"></div>
+
+      <div style="display:flex;gap:10px;margin-top:24px;justify-content:flex-end;">
+        <button class="btn-ghost" onclick="resetManual()">Resetear a ejemplo</button>
+        <button class="btn-primary" onclick="guardarManual()" style="font-size:13px;padding:8px 20px;">Guardar precios</button>
+      </div>
+    </div>
+
+    <div style="margin-top:24px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;max-width:700px;">
+      <div class="section-title" style="margin-bottom:12px;">Fuentes recomendadas</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="font-size:12px;">
+          <div style="color:var(--text2);margin-bottom:4px;font-family:var(--mono);">🇺🇸 Chicago (CME/CBOT)</div>
+          <div style="color:var(--text3);">cmegroup.com / barchart.com</div>
+        </div>
+        <div style="font-size:12px;">
+          <div style="color:var(--text2);margin-bottom:4px;font-family:var(--mono);">🇧🇷 Brasil (ESALQ/B3)</div>
+          <div style="color:var(--text3);">cepea.esalq.usp.br</div>
+        </div>
+        <div style="font-size:12px;">
+          <div style="color:var(--text2);margin-bottom:4px;font-family:var(--mono);">🇦🇷 Argentina — Granos</div>
+          <div style="color:var(--text3);">bolsadecereales.com.ar / rosario.bcr.com.ar</div>
+        </div>
+        <div style="font-size:12px;">
+          <div style="color:var(--text2);margin-bottom:4px;font-family:var(--mono);">🇦🇷 Argentina — Futuros</div>
+          <div style="color:var(--text3);">matba-rofex.com.ar</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal confirm save -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Precios actualizados</div>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="document.getElementById('modal-overlay').classList.remove('open')">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =============================================
+// DATA STORE
+// =============================================
+const STORAGE_KEY = 'granoshub_data_v3';
+
+const COMMODITIES_GRANOS = [
+  { id:'soja',    name:'Soja',    sub:'Poroto / CBOT ZS',  group:'granos' },
+  { id:'maiz',    name:'Maíz',    sub:'CBOT ZC',            group:'granos' },
+  { id:'trigo',   name:'Trigo',   sub:'CBOT ZW',            group:'granos' },
+  { id:'girasol', name:'Girasol', sub:'Sunflower',          group:'granos' },
+  { id:'cebada',  name:'Cebada',  sub:'Barley / BCR',       group:'granos' },
+  { id:'sorgo',   name:'Sorgo',   sub:'CBOT ZS',            group:'granos' },
+];
+
+const COMMODITIES_SUBPROD = [
+  { id:'aceite_soja',    name:'Aceite de Soja',    sub:'CBOT ZL / Arg',   group:'subprod' },
+  { id:'harina_soja',    name:'Harina de Soja',    sub:'CBOT ZM / Arg',   group:'subprod' },
+  { id:'aceite_gira',    name:'Aceite de Girasol', sub:'CIMCO / Rosario', group:'subprod' },
+  { id:'harina_gira',    name:'Pellets Girasol',   sub:'Rosario',         group:'subprod' },
+  { id:'aceite_maiz',    name:'Aceite de Maíz',    sub:'CBOT / Arg',      group:'subprod' },
+  { id:'gluten_maiz',    name:'Gluten de Maíz',    sub:'Wet milling',     group:'subprod' },
+];
+
+// =============================================
+// MULTI-POSITION PRICE STRUCTURE
+// =============================================
+// Cada commodity tiene posiciones por mercado.
+// Estructura: { chicago: [{pos, price, var}], brasil: [...], argentina: [...] }
+// La primera posición de cada mercado es la "principal" (se muestra en resumen)
+
+const DEFAULT_MULTI_PRICES = {
+  soja: {
+    chicago:   [
+      { pos:'Jul 26',  price: 360.0, var: +1.5 },
+      { pos:'Nov 26',  price: 365.0, var: +2.5 },
+      { pos:'Mar 27',  price: 369.0, var: +2.0 },
+    ],
+    brasil: [
+      { pos:'Jul 26',  price: 352.0, var: +1.2 },
+      { pos:'Nov 26',  price: 355.0, var: +1.8 },
+    ],
+    argentina: [
+      { pos:'Disp.',   price: 328.0, var: +3.5 },
+      { pos:'May 26',  price: 335.0, var: +3.0 },
+      { pos:'Jul 26',  price: 340.0, var: +2.8 },
+      { pos:'Nov 26',  price: 345.0, var: +2.0 },
+    ],
+  },
+  maiz: {
+    chicago: [
+      { pos:'Jul 26',  price: 170.0, var: -0.5 },
+      { pos:'Dic 26',  price: 172.0, var: -0.8 },
+      { pos:'Mar 27',  price: 174.0, var: -0.3 },
+    ],
+    brasil: [
+      { pos:'Jul 26',  price: 166.0, var: +0.3 },
+      { pos:'Dic 26',  price: 168.0, var: +0.5 },
+    ],
+    argentina: [
+      { pos:'Disp.',   price: 152.0, var: -1.5 },
+      { pos:'Abr 27',  price: 158.0, var: -1.2 },
+      { pos:'Jul 27',  price: 161.0, var: -0.8 },
+      { pos:'Dic 27',  price: 165.0, var: -0.5 },
+    ],
+  },
+  trigo: {
+    chicago: [
+      { pos:'Jul 26',  price: 192.0, var: +0.8 },
+      { pos:'Dic 26',  price: 195.0, var: +1.2 },
+      { pos:'Mar 27',  price: 197.0, var: +0.9 },
+    ],
+    brasil: [
+      { pos:'Jul 26',  price: 190.0, var: +0.6 },
+      { pos:'Dic 26',  price: 192.0, var: +0.8 },
+    ],
+    argentina: [
+      { pos:'Disp.',   price: 172.0, var: +0.5 },
+      { pos:'Ene 27',  price: 180.0, var: +0.5 },
+      { pos:'Mar 27',  price: 182.0, var: +0.4 },
+    ],
+  },
+  girasol: {
+    chicago:   [],
+    brasil:    [],
+    argentina: [
+      { pos:'Disp.',   price: 330.0, var: +2.0 },
+      { pos:'Nov 26',  price: 325.0, var: +1.5 },
+    ],
+  },
+  cebada: {
+    chicago:   [],
+    brasil:    [],
+    argentina: [
+      { pos:'Disp.',   price: 170.0, var: -0.5 },
+    ],
+  },
+  sorgo: {
+    chicago: [
+      { pos:'Dic 26',  price: 158.0, var: +0.3 },
+    ],
+    brasil:    [],
+    argentina: [
+      { pos:'Disp.',   price: 145.0, var: +0.2 },
+    ],
+  },
+  aceite_soja: {
+    chicago: [
+      { pos:'Jul 26',  price: 930.0, var: +4.0 },
+      { pos:'Dic 26',  price: 940.0, var: +5.0 },
+    ],
+    brasil: [
+      { pos:'Nov 26',  price: 920.0, var: +3.0 },
+    ],
+    argentina: [
+      { pos:'Disp.',   price: 895.0, var: +4.5 },
+    ],
+  },
+  harina_soja: {
+    chicago: [
+      { pos:'Jul 26',  price: 315.0, var: +1.0 },
+      { pos:'Dic 26',  price: 320.0, var: +1.5 },
+    ],
+    brasil: [
+      { pos:'Nov 26',  price: 310.0, var: +2.0 },
+    ],
+    argentina: [
+      { pos:'Disp.',   price: 295.0, var: +1.0 },
+    ],
+  },
+  aceite_gira: {
+    chicago:   [],
+    brasil:    [],
+    argentina: [
+      { pos:'Disp.',   price: 1020.0, var: +8.0 },
+    ],
+  },
+  harina_gira: {
+    chicago:   [],
+    brasil:    [],
+    argentina: [
+      { pos:'Disp.',   price: 195.0, var: -1.0 },
+    ],
+  },
+  aceite_maiz: {
+    chicago: [
+      { pos:'Dic 26',  price: 870.0, var: +3.0 },
+    ],
+    brasil:    [],
+    argentina: [
+      { pos:'Disp.',   price: 840.0, var: +2.0 },
+    ],
+  },
+  gluten_maiz: {
+    chicago:   [],
+    brasil:    [],
+    argentina: [
+      { pos:'Disp.',   price: 420.0, var: 0.0 },
+    ],
+  },
+};
+
+// Helpers para compatibilidad con el resto del código (basis, KPIs, etc.)
+// Devuelve el precio principal (primera posición) de un mercado para un commodity
+function getMainPrice(commId, market) {
+  const d = multiPrices[commId];
+  if (!d) return null;
+  const arr = d[market];
+  if (!arr || arr.length === 0) return null;
+  return arr[0].price;
+}
+
+// Legacy: construye objeto {chicago, brasil, argentina, ch_pos, br_pos, ar_pos} para basis/KPIs
+function getPricesLegacy(commId) {
+  const d = multiPrices[commId];
+  if (!d) return {};
+  return {
+    chicago:   getMainPrice(commId, 'chicago'),
+    brasil:    getMainPrice(commId, 'brasil'),
+    argentina: getMainPrice(commId, 'argentina'),
+    ch_pos:    d.chicago?.[0]?.pos || null,
+    br_pos:    d.brasil?.[0]?.pos  || null,
+    ar_pos:    d.argentina?.[0]?.pos || null,
+    ch_var:    d.chicago?.[0]?.var  || null,
+    br_var:    d.brasil?.[0]?.var   || null,
+    ar_var:    d.argentina?.[0]?.var || null,
+  };
+}
+
+let multiPrices = {};
+let prices = {}; // legacy shim — populated from multiPrices for basis/KPIs
+let lastUpdate = null;
+let chartInstances = {};
+
+function loadData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      multiPrices = parsed.multiPrices || structuredClone(DEFAULT_MULTI_PRICES);
+      lastUpdate = parsed.lastUpdate || null;
+    } else {
+      multiPrices = structuredClone(DEFAULT_MULTI_PRICES);
+    }
+  } catch(e) {
+    multiPrices = structuredClone(DEFAULT_MULTI_PRICES);
+  }
+  rebuildLegacyPrices();
+}
+
+function rebuildLegacyPrices() {
+  // Rebuild legacy `prices` map for basis/KPI/chart code
+  const allComm = [...COMMODITIES_GRANOS, ...COMMODITIES_SUBPROD];
+  allComm.forEach(c => { prices[c.id] = getPricesLegacy(c.id); });
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ multiPrices, lastUpdate }));
+}
+
+// =============================================
+// VIEWS
+// =============================================
+function showView(v) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  event.target.classList.add('active');
+
+  if (v === 'basis')  renderBasisView();
+  if (v === 'ratios') renderRatiosView();  // async, no await needed
+  if (v === 'manual') renderManualForm();
+}
+
+// =============================================
+// COMMODITY CARDS — multi-position expandable
+// =============================================
+
+function varHtml(v) {
+  if (v == null) return '';
+  const cls = v > 0 ? 'up' : v < 0 ? 'down' : 'neutral';
+  const sign = v > 0 ? '+' : '';
+  return `<div class="comm-price-var ${cls}">${sign}${v.toFixed(1)}</div>`;
+}
+
+function mainPriceHtml(arr) {
+  if (!arr || arr.length === 0) return `<div class="comm-price-empty">—</div>`;
+  const p = arr[0];
+  const tagCls = p.pos === 'Disp.' ? 'pos-tag-disp' : '';
+  return `
+    <div class="comm-price-main">${p.price.toFixed(1)}</div>
+    <div><span class="comm-price-pos ${tagCls}">${p.pos}</span></div>
+    ${varHtml(p.var)}
+  `;
+}
+
+function basisHtml(argArr, refArr) {
+  if (!argArr?.length || !refArr?.length) return `<div class="comm-price-empty">—</div>`;
+  const b = argArr[0].price - refArr[0].price;
+  const sign = b >= 0 ? '+' : '';
+  const cls = b >= 0 ? 'up' : 'down';
+  return `<div class="comm-basis-val ${cls}">${sign}${b.toFixed(1)}</div>`;
+}
+
+function renderCommodityCard(c, expanded = false) {
+  const d = multiPrices[c.id] || { chicago:[], brasil:[], argentina:[] };
+  const chi = d.chicago || [], bra = d.brasil || [], arg = d.argentina || [];
+
+  // Determine all unique positions across markets for the expanded table
+  const allRows = buildPositionRows(chi, bra, arg);
+
+  const expClass = expanded ? 'expanded' : '';
+
+  return `
+  <div class="comm-card ${expClass}" id="card-${c.id}">
+
+    <!-- Summary header row -->
+    <div class="comm-card-header" onclick="toggleCard('${c.id}')">
+      <div>
+        <div class="comm-name">${c.name}</div>
+        <div class="comm-sub">${c.sub}</div>
+      </div>
+      <div class="comm-price-cell">${mainPriceHtml(chi)}</div>
+      <div class="comm-price-cell col-brasil-cell">${mainPriceHtml(bra)}</div>
+      <div class="comm-price-cell">${mainPriceHtml(arg)}</div>
+      <div class="comm-basis-cell basis-cols">${basisHtml(arg, chi)}</div>
+      <div class="comm-basis-cell basis-cols">
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
+          ${basisHtml(arg, bra)}
+          <div class="comm-expand-btn">
+            <span>${allRows.length > 1 ? allRows.length + ' pos' : ''}</span>
+            <span class="expand-arrow">▾</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expanded positions table -->
+    <div class="comm-positions">
+      <table class="pos-table">
+        <thead>
+          <tr>
+            <th>Posición</th>
+            <th style="color:var(--chicago)">Chicago</th>
+            <th style="color:var(--brasil)">Brasil</th>
+            <th style="color:var(--argentina)">Argentina</th>
+            <th>Basis ARG/CHI</th>
+            <th>Basis ARG/BRA</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${allRows.map(row => `
+          <tr>
+            <td>
+              <span class="pos-tag ${row.pos==='Disp.'?'pos-tag-disp':''}">${row.pos}</span>
+            </td>
+            <td>${row.chi != null ? row.chi.toFixed(1) : '<span style="color:var(--text3)">—</span>'}</td>
+            <td>${row.bra != null ? row.bra.toFixed(1) : '<span style="color:var(--text3)">—</span>'}</td>
+            <td>${row.arg != null ? `<strong>${row.arg.toFixed(1)}</strong>` : '<span style="color:var(--text3)">—</span>'}</td>
+            <td class="${row.arg!=null&&row.chi!=null?(row.arg-row.chi>=0?'up':'down'):''}">
+              ${row.arg!=null&&row.chi!=null ? (row.arg-row.chi>=0?'+':'')+(row.arg-row.chi).toFixed(1) : '<span style="color:var(--text3)">—</span>'}
+            </td>
+            <td class="${row.arg!=null&&row.bra!=null?(row.arg-row.bra>=0?'up':'down'):''}">
+              ${row.arg!=null&&row.bra!=null ? (row.arg-row.bra>=0?'+':'')+(row.arg-row.bra).toFixed(1) : '<span style="color:var(--text3)">—</span>'}
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// Builds a unified list of position rows combining all three markets
+function buildPositionRows(chi, bra, arg) {
+  // Collect all unique positions
+  const posSet = new Set();
+  const posOrder = { 'Disp.': 0 };
+  [...chi, ...bra, ...arg].forEach(p => posSet.add(p.pos));
+
+  // Sort: Disp. first, then chronological by year/month
+  const monthOrder = {'Ene':1,'Feb':2,'Mar':3,'Abr':4,'May':5,'Jun':6,'Jul':7,'Ago':8,'Sep':9,'Oct':10,'Nov':11,'Dic':12};
+  const sortedPos = [...posSet].sort((a, b) => {
+    if (a === 'Disp.') return -1;
+    if (b === 'Disp.') return 1;
+    const [am, ay] = a.split(' '); const [bm, by] = b.split(' ');
+    const ayN = parseInt(ay||'99'), byN = parseInt(by||'99');
+    if (ayN !== byN) return ayN - byN;
+    return (monthOrder[am]||99) - (monthOrder[bm]||99);
+  });
+
+  return sortedPos.map(pos => ({
+    pos,
+    chi: chi.find(p=>p.pos===pos)?.price ?? null,
+    bra: bra.find(p=>p.pos===pos)?.price ?? null,
+    arg: arg.find(p=>p.pos===pos)?.price ?? null,
+  }));
+}
+
+function toggleCard(id) {
+  document.getElementById('card-' + id)?.classList.toggle('expanded');
+}
+
+function renderCards(containerId, commodities) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  // Column header
+  el.innerHTML = `
+    <div class="col-header-row">
+      <div class="col-header-label">Commodity</div>
+      <div class="col-header-label" style="color:var(--chicago)">Chicago</div>
+      <div class="col-header-label" style="color:var(--brasil)">Brasil</div>
+      <div class="col-header-label" style="color:var(--argentina)">Argentina</div>
+      <div class="col-header-label basis-cols">ARG/CHI</div>
+      <div class="col-header-label basis-cols">ARG/BRA ▾</div>
+    </div>
+    ${commodities.map(c => renderCommodityCard(c)).join('')}
+  `;
+}
+
+function renderPricesView() {
+  rebuildLegacyPrices();
+  renderCards('cards-granos', COMMODITIES_GRANOS);
+  renderCards('cards-subproductos', COMMODITIES_SUBPROD);
+}
+
+// Legacy helpers still needed by basis/KPI code
+function basisCell(arg, ref) {
+  if (arg == null || ref == null) return '<td class="price-empty">—</td>';
+  const b = arg - ref;
+  const sign = b >= 0 ? '+' : '';
+  return `<td><span class="basis-val ${b>=0?'up':'down'}">${sign}${b.toFixed(1)}</span></td>`;
+}
+function priceCell(val, varVal, pos) {
+  if (val == null) return '<td class="price-empty">—</td>';
+  let changeHtml = '';
+  if (varVal != null) {
+    const cls = varVal > 0 ? 'up' : varVal < 0 ? 'down' : 'neutral';
+    const sign = varVal > 0 ? '+' : '';
+    changeHtml = `<div class="price-change ${cls}">${sign}${varVal.toFixed(1)}</div>`;
+  }
+  const posHtml = pos && pos !== '—' ? `<div class="pos-badge">${pos}</div>` : '';
+  return `<td><div class="price-val">${val.toFixed(1)}</div>${changeHtml}${posHtml}</td>`;
+}
+
+// =============================================
+// BASIS VIEW
+// =============================================
+function renderBasisView() {
+  const bases = [
+    { name:'ARG vs Chicago', key1:'argentina', key2:'chicago' },
+    { name:'ARG vs Brasil',  key1:'argentina', key2:'brasil'  },
+    { name:'Brasil vs Chicago', key1:'brasil', key2:'chicago' },
+  ];
+
+  const allComm = [...COMMODITIES_GRANOS, ...COMMODITIES_SUBPROD];
+  let cardsHtml = '';
+  bases.forEach(b => {
+    cardsHtml += `<div class="basis-card"><div class="basis-card-title">${b.name} (USD/tn)</div>`;
+    allComm.forEach(c => {
+      const p = prices[c.id] || {};
+      const v1 = p[b.key1], v2 = p[b.key2];
+      if (v1 == null || v2 == null) return;
+      const diff = v1 - v2;
+      const sign = diff >= 0 ? '+' : '';
+      cardsHtml += `<div class="basis-row">
+        <span class="basis-row-name">${c.name}</span>
+        <span class="basis-row-val ${diff>=0?'up':'down'}">${sign}${diff.toFixed(1)}</span>
+      </div>`;
+    });
+    cardsHtml += `</div>`;
+  });
+  document.getElementById('basis-cards').innerHTML = cardsHtml;
+
+  // Charts
+  const meses = ['Ago','Sep','Oct','Nov','Dic','Ene','Feb','Mar','Abr','May','Jun','Jul'];
+  function genBasisSeries(base, vol, trend) {
+    return meses.map((_, i) => +(base + trend*i + (Math.random()-0.5)*vol).toFixed(1));
+  }
+
+  renderLineChart('chart-basis-soja', meses, [
+    { label:'ARG/CHI', data: genBasisSeries(-25, 8, 0.5), color:'#2980b9' },
+    { label:'ARG/BRA', data: genBasisSeries(-12, 5, 0.2), color:'#27ae60' },
+  ]);
+  renderLineChart('chart-basis-maiz', meses, [
+    { label:'ARG/CHI', data: genBasisSeries(-14, 6, -0.3), color:'#2980b9' },
+    { label:'ARG/BRA', data: genBasisSeries(-10, 4, 0.1), color:'#27ae60' },
+  ]);
+  renderLineChart('chart-basis-trigo', mesos => mesos, meses, [
+    { label:'ARG/CHI', data: genBasisSeries(-15, 7, 0.4), color:'#2980b9' },
+    { label:'ARG/BRA', data: genBasisSeries(-8, 4, 0.2), color:'#27ae60' },
+  ], true);
+
+  // Basis comparado bar chart
+  const granosPrincipales = ['Soja','Maíz','Trigo','Girasol'];
+  const basisArgChi = granosPrincipales.map(name => {
+    const c = COMMODITIES_GRANOS.find(x => x.name === name);
+    if (!c) return 0;
+    const p = prices[c.id] || {};
+    if (p.argentina == null || p.chicago == null) return null;
+    return +(p.argentina - p.chicago).toFixed(1);
+  });
+
+  if (chartInstances['chart-basis-comparado']) chartInstances['chart-basis-comparado'].destroy();
+  const ctx = document.getElementById('chart-basis-comparado')?.getContext('2d');
+  if (ctx) {
+    chartInstances['chart-basis-comparado'] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: granosPrincipales,
+        datasets: [{
+          label: 'Basis ARG/CHI (USD/tn)',
+          data: basisArgChi,
+          backgroundColor: basisArgChi.map(v => v >= 0 ? 'rgba(46,213,115,0.5)' : 'rgba(255,71,87,0.5)'),
+          borderColor: basisArgChi.map(v => v >= 0 ? '#2ed573' : '#ff4757'),
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#8b91a8', font: { family: 'IBM Plex Mono', size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+          y: { ticks: { color: '#8b91a8', font: { family: 'IBM Plex Mono', size: 11 }, callback: v => (v>0?'+':'')+v }, grid: { color: 'rgba(255,255,255,0.06)' } }
+        }
+      }
+    });
+  }
+}
+
+function renderLineChart(id, labels, datasets, skipCall) {
+  if (skipCall === true) return; // called with wrong args, skip
+  if (chartInstances[id]) chartInstances[id].destroy();
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return;
+  chartInstances[id] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: datasets.map(d => ({
+        label: d.label,
+        data: d.data,
+        borderColor: d.color,
+        backgroundColor: d.color + '18',
+        fill: true,
+        tension: 0.35,
+        pointRadius: 2,
+        borderWidth: 1.5,
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#8b91a8', font: { family: 'IBM Plex Mono', size: 10 }, boxWidth: 10, boxHeight: 10 } } },
+      scales: {
+        x: { ticks: { color: '#8b91a8', font: { family: 'IBM Plex Mono', size: 10 }, maxRotation: 0 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#8b91a8', font: { family: 'IBM Plex Mono', size: 10 }, callback: v => (v>0?'+':'')+v }, grid: { color: 'rgba(255,255,255,0.06)' } }
+      }
+    }
+  });
+}
+
+// =============================================
+// RATIOS & CAMPAÑAS — con datos reales FRED API
+// =============================================
+const FRED_KEY = '399d450e101c89a04b41a7063bf41dce';
+const CAMPANAS = ['21/22','22/23','23/24','24/25','25/26'];
+const MESES_CAMP = ['Jul','Ago','Sep','Oct','Nov','Dic','Ene','Feb','Mar','Abr','May','Jun'];
+
+// Cache de datos FRED en localStorage para no repetir llamadas
+const FRED_CACHE_KEY = 'granoshub_fred_v1';
+let fredCache = null;
+
+function loadFredCache() {
+  try {
+    const raw = localStorage.getItem(FRED_CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Cache válido por 24 horas
+      if (parsed.ts && (Date.now() - parsed.ts) < 86400000) {
+        fredCache = parsed.data;
+        return true;
+      }
+    }
+  } catch(e) {}
+  return false;
+}
+
+function saveFredCache(data) {
+  fredCache = data;
+  localStorage.setItem(FRED_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+}
+
+// Trae una serie de FRED y devuelve array de {date, value}
+async function fetchFredSeries(seriesId) {
+  const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${FRED_KEY}&file_type=json&observation_start=2019-07-01&frequency=m&aggregation_method=avg`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`FRED error ${resp.status} para ${seriesId}`);
+  const json = await resp.json();
+  return (json.observations || [])
+    .filter(o => o.value !== '.')
+    .map(o => ({ date: o.date, value: parseFloat(o.value) }));
+}
+
+// Convierte serie lineal [{date, value}] en estructura por campaña agrícola
+// Campaña: Jul año N → Jun año N+1
+function serieToCampanas(serie) {
+  // FRED PSOYBUSDM está en USD/tn (ya viene en esa unidad desde el FMI)
+  // PMAIZMTUSD viene en USD/tn también
+  const result = {};
+  CAMPANAS.forEach(c => {
+    const [y1s, y2s] = c.split('/');
+    const y1 = 2000 + parseInt(y1s);
+    const y2 = 2000 + parseInt(y2s);
+    const meses = [
+      `${y1}-07`, `${y1}-08`, `${y1}-09`, `${y1}-10`, `${y1}-11`, `${y1}-12`,
+      `${y2}-01`, `${y2}-02`, `${y2}-03`, `${y2}-04`, `${y2}-05`, `${y2}-06`,
+    ];
+    result[c] = meses.map(m => {
+      const obs = serie.find(o => o.date.startsWith(m));
+      return obs ? +obs.value.toFixed(1) : null;
+    });
+  });
+  return result;
+}
+
+// Estado de la carga FRED
+let fredData = null; // { soja: {campanas}, maiz: {campanas}, trigo: {campanas}, harina_soja: {campanas}, aceite_soja: {campanas} }
+let fredLoading = false;
+let fredLoaded = false;
+
+async function loadFredData(forceRefresh = false) {
+  if (fredLoaded && !forceRefresh) return;
+  if (fredLoading) return;
+
+  // Intentar cache primero
+  if (!forceRefresh && loadFredCache()) {
+    fredData = fredCache;
+    fredLoaded = true;
+    return;
+  }
+
+  fredLoading = true;
+  setRatiosLoading(true);
+
+  try {
+    // Series FRED:
+    // PSOYBUSDM  = Soybean, USD/metric ton (FMI)
+    // PMAIZMTUSD = Corn/Maize, USD/metric ton (FMI)
+    // PWHEAMTUSDM = Wheat, USD/metric ton (FMI)
+    // PSMEAUSDM  = Soybean Meal, USD/metric ton (FMI)
+    // PSOYOUSDM  = Soybean Oil, USD/metric ton (FMI) — en cents/lb, se convierte
+    const [sojaSerie, maizSerie, trigoSerie, harinaSerie, aceiteSerie] = await Promise.all([
+      fetchFredSeries('PSOYBUSDM'),
+      fetchFredSeries('PMAIZMTUSD'),
+      fetchFredSeries('PWHEAMTUSDM'),
+      fetchFredSeries('PSMEAUSDM'),
+      fetchFredSeries('PSOYOUSDM'),
+    ]);
+
+    fredData = {
+      soja:        serieToCampanas(sojaSerie),
+      maiz:        serieToCampanas(maizSerie),
+      trigo:       serieToCampanas(trigoSerie),
+      harina_soja: serieToCampanas(harinaSerie),
+      aceite_soja: serieToCampanas(aceiteSerie),
+    };
+
+    saveFredCache(fredData);
+    fredLoaded = true;
+  } catch(err) {
+    console.error('FRED load error:', err);
+    setRatiosError('No se pudieron cargar datos de FRED: ' + err.message);
+  } finally {
+    fredLoading = false;
+    setRatiosLoading(false);
+  }
+}
+
+function setRatiosLoading(v) {
+  const el = document.getElementById('fred-status');
+  if (!el) return;
+  el.textContent = v ? '⟳ Cargando datos históricos de FRED (FMI)...' : '';
+  el.style.color = 'var(--text3)';
+}
+
+function setRatiosError(msg) {
+  const el = document.getElementById('fred-status');
+  if (el) { el.textContent = '⚠ ' + msg; el.style.color = 'var(--red)'; }
+}
+
+function setRatiosSource(msg) {
+  const el = document.getElementById('fred-status');
+  if (el) { el.textContent = msg; el.style.color = 'var(--text3)'; }
+}
+
+// Calcula ratio campaña a campaña desde fredData
+function calcRatioCampanas() {
+  if (!fredData) return null;
+  const result = {};
+  CAMPANAS.forEach(c => {
+    const soja = fredData.soja[c];
+    const maiz = fredData.maiz[c];
+    if (!soja || !maiz) return;
+    result[c] = soja.map((s, i) => {
+      if (s == null || maiz[i] == null || maiz[i] === 0) return null;
+      return +(s / maiz[i]).toFixed(3);
+    });
+  });
+  return result;
+}
+
+async function renderRatiosView() {
+  // KPIs (con datos de precios actuales)
+  const ps = prices;
+  const sojaArg = ps.soja?.argentina;
+  const maizArg = ps.maiz?.argentina;
+  const sojaChiArg = ps.soja?.argentina != null && ps.soja?.chicago != null
+    ? ps.soja.argentina - ps.soja.chicago : null;
+  const ratioChiHoy = ps.soja?.chicago && ps.maiz?.chicago
+    ? (ps.soja.chicago / ps.maiz.chicago).toFixed(2) : '—';
+  const ratioArgHoy = sojaArg && maizArg
+    ? (sojaArg / maizArg).toFixed(2) : '—';
+
+  // Cargar FRED en paralelo, mostrar KPIs ya
+  renderKPIs(ratioChiHoy, ratioArgHoy, sojaChiArg, ps, null);
+
+  // Cargar datos FRED
+  await loadFredData();
+
+  if (!fredData) {
+    // Falló la carga — mostrar KPIs sin promedio histórico real
+    return;
+  }
+
+  // Promedio histórico real de ratio soja/maíz (campañas 20/21 a 24/25)
+  const ratiosCamp = calcRatioCampanas();
+  const campHistoricas = CAMPANAS.slice(0, 4);
+  let sumaProm = 0, countProm = 0;
+  campHistoricas.forEach(c => {
+    if (!ratiosCamp[c]) return;
+    const vals = ratiosCamp[c].filter(v => v != null);
+    if (vals.length) { sumaProm += vals.reduce((a,b)=>a+b,0)/vals.length; countProm++; }
+  });
+  const histAvgReal = countProm > 0 ? (sumaProm / countProm).toFixed(2) : null;
+
+  // Re-render KPIs con el promedio real
+  renderKPIs(ratioChiHoy, ratioArgHoy, sojaChiArg, ps, histAvgReal);
+
+  // Gráfico ratio por campaña — datos reales
+  renderRatioCampanasChart(ratiosCamp);
+
+  // Gráfico ratio mercados — datos reales
+  renderRatioMercadosChart(ratioChiHoy, ratioArgHoy, histAvgReal);
+
+  // Gráficos históricos de precio — datos reales
+  renderHistChartFred('chart-hist-soja', fredData.soja, 'Soja');
+  renderHistChartFred('chart-hist-maiz', fredData.maiz, 'Maíz');
+  renderHistChartFred('chart-hist-trigo', fredData.trigo, 'Trigo');
+
+  // Fuente
+  const now = new Date().toLocaleString('es-AR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  setRatiosSource(`Fuente: FRED / FMI (${now}) · Precios mensuales promedio · Soja, Maíz, Trigo en USD/tn`);
+}
+
+function renderKPIs(ratioChiHoy, ratioArgHoy, sojaChiArg, ps, histAvgReal) {
+  const sojaArg = ps.soja?.argentina;
+  const histLabel = histAvgReal ? `Prom. real 4y: ${histAvgReal}` : 'Cargando prom. hist...';
+  const trendRatio = histAvgReal && ratioChiHoy !== '—'
+    ? (parseFloat(ratioChiHoy) > parseFloat(histAvgReal) ? 'up' : 'down') : null;
+
+  const kpis = [
+    { label:'Ratio Soja/Maíz Chicago', val: ratioChiHoy, sub:'Posición actual', trend: trendRatio, trendTxt: histLabel },
+    { label:'Ratio Soja/Maíz Argentina', val: ratioArgHoy, sub:'Rosario hoy', trend: null, trendTxt: '' },
+    { label:'Basis Soja ARG/CHI', val: sojaChiArg != null ? (sojaChiArg >= 0 ? '+' : '') + sojaChiArg.toFixed(1) : '—', sub:'USD/tn', trend: sojaChiArg != null ? (sojaChiArg >= -20 ? 'up' : 'down') : null, trendTxt: 'Referencia: > -20' },
+    { label:'Soja Chicago', val: ps.soja?.chicago ? ps.soja.chicago.toFixed(1) : '—', sub: ps.soja?.ch_pos || 'USD/tn', trend: null, trendTxt: '' },
+    { label:'Maíz Chicago', val: ps.maiz?.chicago ? ps.maiz.chicago.toFixed(1) : '—', sub: ps.maiz?.ch_pos || 'USD/tn', trend: null, trendTxt: '' },
+    { label:'Soja Argentina', val: ps.soja?.argentina ? ps.soja.argentina.toFixed(1) : '—', sub: ps.soja?.ar_pos || 'USD/tn Rosario', trend: null, trendTxt: '' },
+  ];
+
+  let html = '';
+  kpis.forEach(k => {
+    const trendCls = k.trend === 'up' ? 'up' : k.trend === 'down' ? 'down' : 'neutral';
+    html += `<div class="kpi-card">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.val}</div>
+      <div class="kpi-sub">${k.sub}</div>
+      ${k.trendTxt ? `<div class="kpi-trend ${trendCls}">${k.trendTxt}</div>` : ''}
+    </div>`;
+  });
+  document.getElementById('kpi-grid').innerHTML = html;
+}
+
+function renderRatioCampanasChart(ratiosCamp) {
+  if (chartInstances['chart-ratio-campanas']) chartInstances['chart-ratio-campanas'].destroy();
+  const ctx = document.getElementById('chart-ratio-campanas')?.getContext('2d');
+  if (!ctx) return;
+  const colors = ['#636e72','#74b9ff','#a29bfe','#e17055','#2ed573'];
+  const datasets = CAMPANAS
+    .filter(c => ratiosCamp[c])
+    .map((c, i) => ({
+      label: c,
+      data: ratiosCamp[c],
+      borderColor: colors[i] || '#888',
+      backgroundColor: 'transparent',
+      tension: 0.35,
+      pointRadius: c === '25/26' ? 3 : 1.5,
+      borderWidth: c === '25/26' ? 2.5 : 1.5,
+      spanGaps: false,
+    }));
+
+  chartInstances['chart-ratio-campanas'] = new Chart(ctx, {
+    type: 'line',
+    data: { labels: MESES_CAMP, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#8b91a8', font: { family: 'IBM Plex Mono', size: 10 }, boxWidth: 10, boxHeight: 2 } } },
+      scales: {
+        x: { ticks: { color: '#8b91a8', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#8b91a8', font: { family: 'IBM Plex Mono', size: 10 }, callback: v => 'x' + v.toFixed(2) }, grid: { color: 'rgba(255,255,255,0.06)' },
+          title: { display: true, text: 'tn soja / tn maíz', color: '#565e7a', font: { family: 'IBM Plex Mono', size: 10 } } }
+      }
+    }
+  });
+}
+
+function renderRatioMercadosChart(ratioChiHoy, ratioArgHoy, histAvgReal) {
+  if (chartInstances['chart-ratio-mercados']) chartInstances['chart-ratio-mercados'].destroy();
+  const ctx = document.getElementById('chart-ratio-mercados')?.getContext('2d');
+  if (!ctx) return;
+  const ratioChiVal = ratioChiHoy === '—' ? null : parseFloat(ratioChiHoy);
+  const ratioArgVal = ratioArgHoy === '—' ? null : parseFloat(ratioArgHoy);
+  const histAvg = histAvgReal ? parseFloat(histAvgReal) : null;
+  chartInstances['chart-ratio-mercados'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Hoy CHI', 'Hoy ARG', 'Prom. 4y FRED'],
+      datasets: [{ label: 'Ratio soja/maíz',
+        data: [ratioChiVal, ratioArgVal, histAvg],
+        backgroundColor: ['rgba(243,156,18,0.5)','rgba(41,128,185,0.5)','rgba(142,142,162,0.35)'],
+        borderColor: ['#f39c12','#2980b9','#8e8ea2'],
+        borderWidth: 1, borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8b91a8', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#8b91a8', font: { family: 'IBM Plex Mono', size: 10 }, callback: v => 'x' + v.toFixed(2) }, grid: { color: 'rgba(255,255,255,0.06)' }, min: 1.5 }
+      }
+    }
+  });
+}
+
+function renderHistChartFred(id, campData, label) {
+  if (!campData) return;
+  if (chartInstances[id]) chartInstances[id].destroy();
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return;
+  const colors = ['#636e72','#74b9ff','#a29bfe','#e17055','#2ed573'];
+  chartInstances[id] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: MESES_CAMP,
+      datasets: CAMPANAS.filter(c => campData[c]).map((c, i) => ({
+        label: c,
+        data: campData[c],
+        borderColor: colors[i] || '#888',
+        backgroundColor: 'transparent',
+        tension: 0.35,
+        pointRadius: c === '25/26' ? 3 : 1.5,
+        borderWidth: c === '25/26' ? 2.5 : 1.5,
+        spanGaps: false,
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#8b91a8', font: { family: 'IBM Plex Mono', size: 10 }, boxWidth: 10, boxHeight: 2 } } },
+      scales: {
+        x: { ticks: { color: '#8b91a8', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#8b91a8', font: { family: 'IBM Plex Mono', size: 10 }, callback: v => 'U$S ' + v }, grid: { color: 'rgba(255,255,255,0.06)' } }
+      }
+    }
+  });
+}
+
+// =============================================
+// MANUAL FORM
+// =============================================
+function renderManualForm() {
+  const allComm = [...COMMODITIES_GRANOS, ...COMMODITIES_SUBPROD];
+  let html = '';
+  allComm.forEach(c => {
+    const d = multiPrices[c.id] || { chicago:[], brasil:[], argentina:[] };
+    html += `<div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border);">
+      <div style="font-size:13px;font-weight:500;margin-bottom:12px;color:var(--text)">${c.name}
+        <span style="color:var(--text3);font-family:var(--mono);font-weight:400;font-size:11px;"> ${c.sub}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+        ${['chicago','brasil','argentina'].map((mkt, mi) => {
+          const mktLabel = ['Chicago','Brasil','Argentina'][mi];
+          const mktColor = ['var(--chicago)','var(--brasil)','var(--argentina)'][mi];
+          const rows = d[mkt] || [];
+          // ensure at least 1 empty row, up to 4
+          const displayRows = rows.length > 0 ? rows : [{ pos:'', price:'', var:'' }];
+          return `<div>
+            <div style="font-size:10px;color:${mktColor};font-family:var(--mono);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;font-weight:500;">${mktLabel}</div>
+            ${displayRows.map((r, ri) => `
+            <div style="display:grid;grid-template-columns:90px 1fr;gap:6px;margin-bottom:6px;">
+              <input type="text" placeholder="Posición" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:5px;font-family:var(--mono);font-size:11px;"
+                id="mf_${c.id}_${mkt}_${ri}_pos" value="${r.pos||''}">
+              <input type="number" step="0.1" placeholder="USD/tn" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:5px;font-family:var(--mono);font-size:12px;"
+                id="mf_${c.id}_${mkt}_${ri}_price" value="${r.price||''}">
+            </div>`).join('')}
+            <button onclick="addManualRow('${c.id}','${mkt}')" style="background:transparent;border:1px dashed var(--border);color:var(--text3);padding:4px 10px;border-radius:5px;font-size:11px;font-family:var(--mono);cursor:pointer;width:100%;margin-top:2px;">+ posición</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  document.getElementById('manual-form').innerHTML = html;
+}
+
+function addManualRow(commId, mkt) {
+  const d = multiPrices[commId] || { chicago:[], brasil:[], argentina:[] };
+  if (!d[mkt]) d[mkt] = [];
+  d[mkt].push({ pos:'', price: null, var: null });
+  multiPrices[commId] = d;
+  renderManualForm();
+}
+
+function guardarManual() {
+  const allComm = [...COMMODITIES_GRANOS, ...COMMODITIES_SUBPROD];
+  allComm.forEach(c => {
+    const d = { chicago:[], brasil:[], argentina:[] };
+    ['chicago','brasil','argentina'].forEach(mkt => {
+      let ri = 0;
+      while (true) {
+        const posEl = document.getElementById(`mf_${c.id}_${mkt}_${ri}_pos`);
+        const priceEl = document.getElementById(`mf_${c.id}_${mkt}_${ri}_price`);
+        if (!posEl) break;
+        const pos = posEl.value.trim();
+        const price = parseFloat(priceEl.value);
+        if (pos && !isNaN(price)) {
+          d[mkt].push({ pos, price, var: null });
+        }
+        ri++;
+      }
+    });
+    multiPrices[c.id] = d;
+  });
+  lastUpdate = new Date().toLocaleString('es-AR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+  rebuildLegacyPrices();
+  saveData();
+  renderPricesView();
+  updateStatusBar('Precios actualizados manualmente — ' + lastUpdate, false);
+  showModal('Precios guardados', 'Los precios cargados manualmente fueron guardados y actualizados en todas las vistas.');
+}
+
+function resetManual() {
+  multiPrices = structuredClone(DEFAULT_MULTI_PRICES);
+  rebuildLegacyPrices();
+  saveData();
+  renderManualForm();
+  renderPricesView();
+  updateStatusBar('Datos de ejemplo cargados.', false);
+}
+
+// =============================================
+// REMARKETS / MATBA-ROFEX CONFIG
+// =============================================
+const REMARKETS_BASE = 'https://api.remarkets.primary.ventures';
+const REMARKETS_USER = 'joacocarrique22721';
+const REMARKETS_PASS = 'lccogC6$';
+
+// Tickers MATBA-ROFEX — formato: PRODUCTO.MERCADO/MESMM
+// Meses: ENE, FEB, MAR, ABR, MAY, JUN, JUL, AGO, SEP, OCT, NOV, DIC
+// Año: últimos 2 dígitos + sufijo de campaña (M = Main)
+const MATBA_TICKERS = {
+  soja: [
+    { pos: 'Disp.',  ticker: 'SOJ.ROS/ENE26M' },  // disponible = contrato más próximo
+    { pos: 'May 26', ticker: 'SOJ.ROS/MAY26M' },
+    { pos: 'Jul 26', ticker: 'SOJ.ROS/JUL26M' },
+    { pos: 'Nov 26', ticker: 'SOJ.ROS/NOV26M' },
+    { pos: 'May 27', ticker: 'SOJ.ROS/MAY27M' },
+  ],
+  maiz: [
+    { pos: 'Disp.',  ticker: 'MAI.ROS/MAR26M' },
+    { pos: 'Abr 26', ticker: 'MAI.ROS/ABR26M' },
+    { pos: 'Jul 26', ticker: 'MAI.ROS/JUL26M' },
+    { pos: 'Dic 26', ticker: 'MAI.ROS/DIC26M' },
+    { pos: 'Abr 27', ticker: 'MAI.ROS/ABR27M' },
+  ],
+  trigo: [
+    { pos: 'Disp.',  ticker: 'TRG.ROS/ENE26M' },
+    { pos: 'Ene 27', ticker: 'TRG.ROS/ENE27M' },
+    { pos: 'Mar 27', ticker: 'TRG.ROS/MAR27M' },
+  ],
+  girasol: [
+    { pos: 'Disp.',  ticker: 'GIR.ROS/ENE26M' },
+    { pos: 'Mar 26', ticker: 'GIR.ROS/MAR26M' },
+  ],
+};
+
+// Obtiene token de reMarkets
+async function getRemarketsToken() {
+  const resp = await fetch(`${REMARKETS_BASE}/auth/getToken`, {
+    method: 'GET',
+    headers: {
+      'X-Username': REMARKETS_USER,
+      'X-Password': REMARKETS_PASS,
+    }
+  });
+  if (!resp.ok) throw new Error(`reMarkets auth falló: ${resp.status}`);
+  const token = resp.headers.get('X-Auth-Token');
+  if (!token) throw new Error('reMarkets no devolvió token');
+  return token;
+}
+
+// Trae market data de un instrumento
+async function getRemarketsQuote(token, ticker) {
+  const encoded = encodeURIComponent(ticker);
+  const resp = await fetch(`${REMARKETS_BASE}/rest/marketdata/get?marketId=ROFX&symbol=${encoded}&entries=LA,OF,BI,OP,CL,SE,OI&depth=1`, {
+    headers: { 'X-Auth-Token': token }
+  });
+  if (!resp.ok) return null;
+  const json = await resp.json();
+  return json;
+}
+
+// Extrae el último precio de una respuesta de reMarkets
+function extractRemarketsPrice(data) {
+  if (!data?.marketData) return null;
+  // Prioridad: último operado (LA) > cierre (CL) > apertura (OP)
+  const md = data.marketData;
+  const price = md.LA?.price ?? md.CL?.price ?? md.OP?.price ?? null;
+  return price ? +parseFloat(price).toFixed(2) : null;
+}
+
+// =============================================
+// AI UPDATE — Chicago/Brasil via IA + Argentina via reMarkets
+// =============================================
+async function actualizarConIA() {
+  const btn = document.getElementById('btn-update');
+  btn.classList.add('loading');
+  btn.disabled = true;
+  setAiDotActive(true);
+
+  const errors = [];
+  let argOk = false, chiOk = false;
+
+  // ---- PASO 1: Argentina directo desde reMarkets ----
+  updateStatusBar('Conectando a MATBA-ROFEX (reMarkets)...', true);
+  try {
+    const token = await getRemarketsToken();
+    updateStatusBar('Obteniendo precios MATBA-ROFEX...', true);
+
+    for (const [commId, tickers] of Object.entries(MATBA_TICKERS)) {
+      if (!multiPrices[commId]) multiPrices[commId] = { chicago:[], brasil:[], argentina:[] };
+      const argArr = [];
+
+      for (const { pos, ticker } of tickers) {
+        try {
+          const data = await getRemarketsQuote(token, ticker);
+          const price = extractRemarketsPrice(data);
+          if (price != null && price > 0) {
+            argArr.push({ pos, price, var: null });
+          }
+        } catch(e) {
+          // ticker individual falló, skip
+        }
+      }
+
+      if (argArr.length > 0) {
+        // Calcular variación respecto al precio anterior
+        argArr.forEach(newP => {
+          const old = multiPrices[commId].argentina.find(r => r.pos === newP.pos);
+          if (old) newP.var = +(newP.price - old.price).toFixed(1);
+        });
+        multiPrices[commId].argentina = sortPositions(argArr);
+        argOk = true;
+      }
+    }
+    if (argOk) {
+      updateStatusBar('✓ Argentina OK · Buscando Chicago y Brasil...', true);
+    } else {
+      errors.push('MATBA-ROFEX: no se obtuvieron precios (puede ser horario fuera de mercado)');
+      updateStatusBar('MATBA sin datos · Buscando Chicago y Brasil...', true);
+    }
+  } catch(err) {
+    errors.push('reMarkets: ' + err.message);
+    updateStatusBar('Error reMarkets · Intentando Chicago/Brasil...', true);
+  }
+
+  // ---- PASO 2: Chicago y Brasil via IA con búsqueda web ----
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1500,
+        tools: [{ "type": "web_search_20250305", "name": "web_search" }],
+        system: `Sos un agente especializado en precios de granos de CBOT/Chicago y ESALQ/CEPEA Brasil.
+
+INSTRUCCIONES CRÍTICAS DE CONVERSIÓN CHICAGO:
+- Los precios CBOT cotizan en CENTAVOS de dólar por bushel (USd/bu), NO en dólares.
+- Para convertir a USD/tn: (precio_en_centavos ÷ 100) × factor_conversion
+- Soja (ZS): factor = 36.744  → ej: 1100 USd/bu ÷ 100 × 36.744 = 404 USD/tn
+- Maíz (ZC): factor = 39.368  → ej: 440 USd/bu ÷ 100 × 39.368 = 173 USD/tn
+- Trigo (ZW): factor = 36.744 → igual que soja
+- Aceite soja (ZL): cotiza en USd/lb → (precio ÷ 100) × 2204.62 USD/tn
+- Harina soja (ZM): cotiza en USD/short ton → × 1.10231 para USD/tn métrica
+- VERIFICÁ que tus resultados sean razonables: soja ~400-450, maíz ~170-200, trigo ~190-230 USD/tn
+
+FUENTES: barchart.com, cmegroup.com para Chicago. cepea.esalq.usp.br para Brasil.
+
+Para cada commodity devolvé los 2-3 contratos más líquidos de Chicago y el precio spot de Brasil.
+
+FORMATO — devolvé SOLO este JSON sin texto ni markdown:
+{
+  "soja":        {"chicago":[{"pos":"Jul 26","price":418.0},{"pos":"Nov 26","price":415.0},{"pos":"Mar 27","price":413.0}],"brasil":[{"pos":"Disp.","price":405.0}]},
+  "maiz":        {"chicago":[{"pos":"Jul 26","price":175.0},{"pos":"Dic 26","price":177.0}],"brasil":[{"pos":"Disp.","price":168.0}]},
+  "trigo":       {"chicago":[{"pos":"Jul 26","price":195.0},{"pos":"Dic 26","price":198.0}],"brasil":[{"pos":"Disp.","price":190.0}]},
+  "aceite_soja": {"chicago":[{"pos":"Jul 26","price":935.0},{"pos":"Dic 26","price":928.0}],"brasil":[]},
+  "harina_soja": {"chicago":[{"pos":"Jul 26","price":318.0},{"pos":"Dic 26","price":315.0}],"brasil":[]}
+}
+Omití arrays vacíos si no encontrás precios. Nunca pongas null dentro de arrays.`,
+        messages: [{ role: "user", content: "Buscá los precios de hoy de soja, maíz, trigo, aceite y harina de soja en Chicago (CBOT) y Brasil (ESALQ). Recordá convertir correctamente de centavos/bushel a USD/tn. Devolvé solo el JSON." }]
+      })
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    const textBlock = data.content?.filter(b => b.type === 'text').pop();
+    if (!textBlock?.text) throw new Error('Sin respuesta de texto');
+
+    let jsonStr = textBlock.text.replace(/```json|```/gi, '').trim();
+    const start = jsonStr.indexOf('{');
+    const end = jsonStr.lastIndexOf('}');
+    if (start === -1 || end === -1) throw new Error('Sin JSON en respuesta');
+    const newPrices = JSON.parse(jsonStr.substring(start, end + 1));
+
+    const allComm = [...COMMODITIES_GRANOS, ...COMMODITIES_SUBPROD];
+    allComm.forEach(c => {
+      const np = newPrices[c.id];
+      if (!np) return;
+      if (!multiPrices[c.id]) multiPrices[c.id] = { chicago:[], brasil:[], argentina:[] };
+      const d = multiPrices[c.id];
+      ['chicago','brasil'].forEach(mkt => {
+        const incoming = np[mkt];
+        if (!Array.isArray(incoming) || !incoming.length) return;
+        incoming.forEach(item => {
+          if (!item.price || !item.pos) return;
+          const old = d[mkt].find(r => r.pos === item.pos);
+          if (old) { old.var = +(item.price - old.price).toFixed(1); old.price = item.price; }
+          else { d[mkt].push({ pos: item.pos, price: item.price, var: null }); }
+        });
+        d[mkt] = sortPositions(d[mkt]);
+      });
+    });
+    chiOk = true;
+  } catch(err) {
+    errors.push('Chicago/Brasil: ' + err.message);
+  }
+
+  // ---- RESULTADO FINAL ----
+  lastUpdate = new Date().toLocaleString('es-AR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+  rebuildLegacyPrices();
+  saveData();
+  renderPricesView();
+  document.getElementById('last-update-text').textContent = 'Act. ' + lastUpdate;
+
+  let statusMsg = '✓ Act. ' + lastUpdate + ' · ';
+  if (argOk && chiOk) statusMsg += 'Argentina (MATBA-ROFEX) + Chicago/Brasil OK';
+  else if (argOk) statusMsg += 'Argentina OK · ' + (errors.join(' · '));
+  else if (chiOk) statusMsg += 'Chicago/Brasil OK · ' + (errors.join(' · '));
+  else statusMsg = '⚠ ' + errors.join(' · ');
+
+  updateStatusBar(statusMsg, false);
+  setAiDotActive(false);
+  btn.classList.remove('loading');
+  btn.disabled = false;
+}
+
+// Ordena array de posiciones: Disp. primero, luego cronológico
+function sortPositions(arr) {
+  const mOrder = {Ene:1,Feb:2,Mar:3,Abr:4,May:5,Jun:6,Jul:7,Ago:8,Sep:9,Oct:10,Nov:11,Dic:12};
+  return arr.sort((a, b) => {
+    if (a.pos === 'Disp.') return -1;
+    if (b.pos === 'Disp.') return 1;
+    const [am, ay] = a.pos.split(' ');
+    const [bm, by] = b.pos.split(' ');
+    const ayN = parseInt(ay||'99'), byN = parseInt(by||'99');
+    if (ayN !== byN) return ayN - byN;
+    return (mOrder[am]||99) - (mOrder[bm]||99);
+  });
+}
+
+function updateStatusBar(msg, loading) {
+  document.getElementById('ai-status-text').textContent = msg;
+  setAiDotActive(loading);
+}
+function setAiDotActive(v) {
+  document.getElementById('ai-dot').classList.toggle('active', v);
+}
+
+function showModal(title, msg) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-sub').textContent = msg;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+// =============================================
+// INIT
+// =============================================
+loadData();
+renderPricesView();
+if (lastUpdate) {
+  document.getElementById('last-update-text').textContent = 'Act. ' + lastUpdate;
+}
+</script>
+</body>
+</html>
